@@ -46,6 +46,20 @@ function DashboardContent() {
   const [areaOpen, setAreaOpen] = useState(false);
   const areaDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Timelapse playback — lives here so MapView's onTilesLoaded can drive advancement.
+  const [playing, setPlaying] = useState(false);
+  // Refs so the tiles-loaded callback always sees current values without re-registering.
+  const playingRef = useRef(false);
+  const timelineLenRef = useRef(0);
+  useEffect(() => { playingRef.current = playing; }, [playing]);
+
+  // Called by MapView when the incoming Wayback layer's tiles have fully rendered.
+  // Advances to the next frame so each capture is fully visible before switching.
+  const handleTilesLoaded = useCallback(() => {
+    if (!playingRef.current) return;
+    setActiveIdx((idx) => (idx + 1) % timelineLenRef.current);
+  }, []);
+
   // Sync URL params on load
   useEffect(() => {
     const slug = searchParams.get("area");
@@ -104,6 +118,15 @@ function DashboardContent() {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [releases, fromYear, toYear]
   );
+
+  // Keep timelineLenRef current for the tiles-loaded callback
+  useEffect(() => { timelineLenRef.current = timeline.length; }, [timeline.length]);
+
+  // Stop playing and reset when the timeline content changes (area / year switch)
+  useEffect(() => {
+    setPlaying(false);
+    setActiveIdx(0);
+  }, [timeline]);
 
   // Clamp activeIdx when timeline shrinks
   useEffect(() => {
@@ -343,6 +366,7 @@ function DashboardContent() {
             activeRelease={activeRelease}
             viewMode={viewMode}
             showBoundaries={showBoundaries}
+            onTilesLoaded={handleTilesLoaded}
           />
 
           {/* Satellite/Map + Boundaries toggles — top-left */}
@@ -366,6 +390,8 @@ function DashboardContent() {
               releases={timeline}
               activeIndex={Math.min(activeIdx, timeline.length - 1)}
               onIndexChange={handleIdxChange}
+              playing={playing}
+              onPlayingChange={setPlaying}
             />
           )}
 

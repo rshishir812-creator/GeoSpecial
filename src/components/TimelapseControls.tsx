@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import type { WaybackRelease } from "@/lib/wayback";
 
 interface TimelapseControlsProps {
@@ -8,42 +7,18 @@ interface TimelapseControlsProps {
   releases: WaybackRelease[];
   activeIndex: number;
   onIndexChange: (i: number) => void;
+  /** Controlled from parent — advances on tile-load, not a fixed timer */
+  playing: boolean;
+  onPlayingChange: (p: boolean) => void;
 }
 
 export default function TimelapseControls({
   releases,
   activeIndex,
   onIndexChange,
+  playing,
+  onPlayingChange,
 }: TimelapseControlsProps) {
-  const [playing, setPlaying] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Keep a stable ref to the latest values so the interval callback never
-  // needs to be recreated on each tick (which was killing playback).
-  const stateRef = useRef({ activeIndex, releasesLength: releases.length, onIndexChange });
-  useEffect(() => {
-    stateRef.current = { activeIndex, releasesLength: releases.length, onIndexChange };
-  });
-
-  // Stop playing when the release list identity changes (area / year-range switch).
-  // With timeline memoised in the parent this only fires on real changes.
-  useEffect(() => {
-    setPlaying(false);
-  }, [releases]);
-
-  useEffect(() => {
-    if (playing) {
-      intervalRef.current = setInterval(() => {
-        const { activeIndex: idx, releasesLength: len, onIndexChange: onChange } = stateRef.current;
-        onChange((idx + 1) % len);
-      }, 1200);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [playing]); // only start/stop when play state toggles
 
   if (releases.length === 0) return null;
 
@@ -73,7 +48,7 @@ export default function TimelapseControls({
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">{releases.length} captures</span>
             <button
-              onClick={() => setPlaying((p) => !p)}
+              onClick={() => onPlayingChange(!playing)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 text-xs font-medium hover:bg-cyan-500/25 transition"
             >
               {playing ? (
@@ -104,7 +79,7 @@ export default function TimelapseControls({
             max={Math.max(releases.length - 1, 0)}
             value={activeIndex}
             onChange={(e) => {
-              setPlaying(false);
+              onPlayingChange(false);
               onIndexChange(Number(e.target.value));
             }}
             className="w-full cursor-pointer accent-cyan-400"

@@ -16,6 +16,8 @@ interface MapViewProps {
   viewMode?: ViewMode;
   showBoundaries?: boolean;
   onMapClick?: (lat: number, lon: number) => void;
+  /** Called when the incoming Wayback tile layer is fully rendered */
+  onTilesLoaded?: () => void;
 }
 
 // Layer / source IDs
@@ -50,6 +52,7 @@ export default function MapView({
   viewMode = "satellite",
   showBoundaries = false,
   onMapClick,
+  onTilesLoaded,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -59,6 +62,9 @@ export default function MapView({
   const fadingRef = useRef(false);
   const lastUrlRef = useRef<string>("");
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  // Keep onTilesLoaded in a ref so loadRelease can call the latest version
+  const onTilesLoadedRef = useRef(onTilesLoaded);
+  useEffect(() => { onTilesLoadedRef.current = onTilesLoaded; }, [onTilesLoaded]);
 
   // ── Init (once) ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -203,28 +209,36 @@ export default function MapView({
     } catch { return; }
 
     fadingRef.current = true;
-    let t = 0;
-    const DURATION = 400;
-    const start = performance.now();
 
-    function tick() {
-      t = Math.min(1, (performance.now() - start) / DURATION);
-      const ease = t * t * (3 - 2 * t); // smooth-step
-      try {
-        map.setPaintProperty(next, "raster-opacity", ease);
-        map.setPaintProperty(curr, "raster-opacity", 1 - ease);
-      } catch { /* layer not yet painted */ }
+    // Wait for the map to finish loading all tiles for the incoming layer,
+    // then crossfade. This ensures each frame is fully rendered before switching.
+    function onIdle() {
+      const DURATION = 350;
+      const start = performance.now();
 
-      if (t < 1) {
-        requestAnimationFrame(tick);
-      } else {
-        currLayerRef.current = next;
-        fadingRef.current = false;
-        // Leave old layer's tiles in place (no empty-string reset → no decode error)
-        try { map.setPaintProperty(curr, "raster-opacity", 0); } catch { /**/ }
+      function tick() {
+        const t = Math.min(1, (performance.now() - start) / DURATION);
+        const ease = t * t * (3 - 2 * t); // smooth-step
+        try {
+          map.setPaintProperty(next, "raster-opacity", ease);
+          map.setPaintProperty(curr, "raster-opacity", 1 - ease);
+        } catch { /* layer not yet painted */ }
+
+        if (t < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          currLayerRef.current = next;
+          fadingRef.current = false;
+          try { map.setPaintProperty(curr, "raster-opacity", 0); } catch { /**/ }
+          // Signal the parent that this frame is fully displayed
+          onTilesLoadedRef.current?.();
+        }
       }
+      requestAnimationFrame(tick);
     }
-    requestAnimationFrame(tick);
+
+    // "idle" fires once the map has no pending renders/tile fetches
+    map.once("idle", onIdle);
   }
 
   function drawAOI(map: maplibregl.Map, b?: [number, number, number, number], name?: string) {
