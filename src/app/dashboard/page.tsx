@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CURATED_AREAS, type CuratedArea, type DashboardTheme, bboxForArea } from "@/data/areas";
@@ -91,14 +91,19 @@ function DashboardContent() {
       .catch(console.error);
   }, []);
 
-  // Releases sorted ascending (old → new) filtered to year range
-  const timeline: WaybackRelease[] = releases
-    .filter((r) => {
-      const yr = Number(r.date.slice(0, 4));
-      return yr >= fromYear && yr <= toYear;
-    })
-    .slice()
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  // Releases sorted ascending (old → new) filtered to year range.
+  // useMemo keeps the array reference stable across activeIdx changes so the
+  // TimelapseControls play-reset effect (keyed on [releases]) doesn't fire on
+  // every timelapse tick and kill playback mid-flight.
+  const timeline = useMemo<WaybackRelease[]>(() =>
+    releases
+      .filter((r) => {
+        const yr = Number(r.date.slice(0, 4));
+        return yr >= fromYear && yr <= toYear;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [releases, fromYear, toYear]
+  );
 
   // Clamp activeIdx when timeline shrinks
   useEffect(() => {

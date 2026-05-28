@@ -131,7 +131,7 @@ export default function MapView({
       map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], {
         padding: 60,
         duration: 1300,
-        maxZoom: 17,
+        maxZoom: 16,
       });
     } else {
       map.flyTo({ center: [lon, lat], zoom, duration: 1200 });
@@ -175,7 +175,9 @@ export default function MapView({
 
   function ensureWaybackLayer(map: maplibregl.Map, id: string, tileUrl: string) {
     if (!map.getSource(id)) {
-      map.addSource(id, { type: "raster", tiles: [tileUrl], tileSize: 256 });
+      // maxzoom:17 — Wayback only publishes tiles up to z17; capping prevents
+      // 404 floods at z18 and the resulting maplibre-gl "bind" crashes.
+      map.addSource(id, { type: "raster", tiles: [tileUrl], tileSize: 256, maxzoom: 17 });
       map.addLayer(
         { id, type: "raster", source: id, paint: { "raster-opacity": 0 } },
         // Insert below AOI glow so wayback is under the AOI outline

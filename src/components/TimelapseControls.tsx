@@ -18,7 +18,15 @@ export default function TimelapseControls({
   const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Stop playing when releases change (area / year-range switch)
+  // Keep a stable ref to the latest values so the interval callback never
+  // needs to be recreated on each tick (which was killing playback).
+  const stateRef = useRef({ activeIndex, releasesLength: releases.length, onIndexChange });
+  useEffect(() => {
+    stateRef.current = { activeIndex, releasesLength: releases.length, onIndexChange };
+  });
+
+  // Stop playing when the release list identity changes (area / year-range switch).
+  // With timeline memoised in the parent this only fires on real changes.
   useEffect(() => {
     setPlaying(false);
   }, [releases]);
@@ -26,7 +34,8 @@ export default function TimelapseControls({
   useEffect(() => {
     if (playing) {
       intervalRef.current = setInterval(() => {
-        onIndexChange((activeIndex + 1) % releases.length);
+        const { activeIndex: idx, releasesLength: len, onIndexChange: onChange } = stateRef.current;
+        onChange((idx + 1) % len);
       }, 1200);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -34,7 +43,7 @@ export default function TimelapseControls({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [playing, activeIndex, releases.length, onIndexChange]);
+  }, [playing]); // only start/stop when play state toggles
 
   if (releases.length === 0) return null;
 
