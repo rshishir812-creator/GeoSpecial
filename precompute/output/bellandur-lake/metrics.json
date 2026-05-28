@@ -1,0 +1,56 @@
+[
+  {
+    "year": 2016,
+    "ndvi": 0.3243,
+    "water_area_km2": 1.12,
+    "built_pct": 61.9
+  },
+  {
+    "year": 2017,
+    "ndvi": 0.3214,
+    "water_area_km2": 1.192,
+    "built_pct": 63.7
+  },
+  {
+    "year": 2018,
+    "ndvi": 0.2888,
+    "water_area_km2": 0.62,
+    "built_pct": 69.0
+  },
+  {
+    "year": 2019,
+    "ndvi": 0.3259,
+    "water_area_km2": 0.494,
+    "built_pct": 62.5
+  },
+  {
+    "year": 2020,
+    "ndvi": 0.3589,
+    "water_area_km2": 0.201,
+    "built_pct": 54.5
+  },
+  {
+    "year": 2021,
+    "ndvi": 0.3387,
+    "water_area_km2": 0.342,
+    "built_pct": 59.9
+  },
+  {
+    "year": 2022,
+    "ndvi": 0.3385,
+    "water_area_km2": 0.239,
+    "built_pct": 56.1
+  },
+  {
+    "year": 2023,
+    "ndvi": 0.2786,
+    "water_area_km2": 0.514,
+    "built_pct": 68.2
+  },
+  {
+    "year": 2024,
+    "ndvi": 0.3427,
+    "water_area_km2": 0.669,
+    "built_pct": 54.3
+  }
+]
