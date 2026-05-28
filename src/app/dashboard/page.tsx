@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CURATED_AREAS, type CuratedArea, type DashboardTheme, bboxForArea } from "@/data/areas";
@@ -43,6 +43,8 @@ function DashboardContent() {
 
   const [insight, setInsight] = useState<string>("");
   const [loadingInsight, setLoadingInsight] = useState(false);
+  const [areaOpen, setAreaOpen] = useState(false);
+  const areaDropdownRef = useRef<HTMLDivElement>(null);
 
   // Sync URL params on load
   useEffect(() => {
@@ -69,6 +71,17 @@ function DashboardContent() {
     });
     router.replace(`/dashboard?${params.toString()}`, { scroll: false });
   }, [selectedArea, theme, fromYear, toYear, router]);
+
+  // Close area dropdown on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (areaDropdownRef.current && !areaDropdownRef.current.contains(e.target as Node)) {
+        setAreaOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   // Fetch Wayback releases once
   useEffect(() => {
@@ -181,15 +194,41 @@ function DashboardContent() {
           {/* Area selector */}
           <div className="flex flex-col gap-2">
             <label className="text-xs text-slate-400 uppercase tracking-wider font-medium">Area</label>
-            <select
-              value={selectedArea.slug}
-              onChange={(e) => handleAreaChange(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50"
-            >
-              {CURATED_AREAS.map((a) => (
-                <option key={a.slug} value={a.slug}>{a.name} · {a.city}</option>
-              ))}
-            </select>
+            <div ref={areaDropdownRef} className="relative">
+              {/* Trigger */}
+              <button
+                onClick={() => setAreaOpen((o) => !o)}
+                className="w-full flex items-center justify-between bg-[#12121a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white hover:border-cyan-500/40 focus:outline-none focus:border-cyan-500/50 transition"
+              >
+                <span className="truncate">{selectedArea.name} · {selectedArea.city}</span>
+                <svg
+                  className={`ml-2 flex-shrink-0 w-4 h-4 text-slate-400 transition-transform ${areaOpen ? "rotate-180" : ""}`}
+                  viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                >
+                  <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {/* Menu */}
+              {areaOpen && (
+                <div className="absolute z-50 mt-1 w-full max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-[#12121a] shadow-xl">
+                  {CURATED_AREAS.map((a) => (
+                    <button
+                      key={a.slug}
+                      onClick={() => { handleAreaChange(a.slug); setAreaOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm transition ${
+                        a.slug === selectedArea.slug
+                          ? "bg-cyan-500/15 text-cyan-300"
+                          : "text-slate-300 hover:bg-white/5 hover:text-white"
+                      }`}
+                    >
+                      <span className="font-medium">{a.name}</span>
+                      <span className="text-slate-500"> · {a.city}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <p className="text-xs text-slate-500 leading-relaxed">{selectedArea.description}</p>
           </div>
 
